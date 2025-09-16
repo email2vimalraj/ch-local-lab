@@ -1,0 +1,20 @@
+
+<clickhouse>
+  <logger>
+    <level>warning</level>
+  </logger>
+  <query_log>
+    <flush_interval_milliseconds>700</flush_interval_milliseconds>
+  </query_log>
+  <listen_host>::</listen_host>
+  <!-- You can tune defaults for local lab here if needed -->
+</clickhouse>
+
+
+<prometheus>
+  <endpoint>/metrics</endpoint>
+  <port>9363</port>
+  <metrics>true</metrics>
+  <events>true</events>
+  <asynchronous_metrics>true</asynchronous_metrics>
+</prometheus>

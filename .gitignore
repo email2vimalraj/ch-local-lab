@@ -1,0 +1,96 @@
+# ---- System / OS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+Thumbs.db
+
+# ---- Editor / IDE ----
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*.code-workspace
+
+# ---- Python (if any scripts later) ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# ---- Node (if any tooling) ----
+node_modules/
+
+# ---- Docker volumes / runtime generated ----
+# Local ClickHouse storage & logs
+/data_dir/
+/logs/
+# Allow placeholder .keep if you add one later
+!data_dir/.keep
+!logs/.keep
+
+# Temporary data exports / imports
+/tmp/
+*.tmp
+*.bak
+*.old
+
+# Benchmark outputs (avoid ignoring source SQL in bench/)
+bench/*.csv
+bench/*.tsv
+bench/*.json
+bench/*.out
+bench/*.log
+
+# ---- Monitoring stack runtime state ----
+# Prometheus TSDB if stored locally (adjust path if different)
+prometheus-data/
+
+# Grafana provisioning generated cache
+grafana/grafana.db
+
+# ---- Generic logs & trace files ----
+*.log
+*.trace
+*.pid
+
+# ---- Archives ----
+*.tar
+*.tar.gz
+*.zip
+*.tgz
+
+# ---- Misc build / coverage ----
+coverage/
+*.coverage
+*.lcov
+
+# ---- Secrets pattern placeholders (none committed) ----
+*.env
+.env.local
+.env.*.local
+# Keep sample env templates
+!env.example
+
+# ---- Ignore any local override configs ----
+config/local/*.xml
+config/local/*.yml
+config/local/*.yaml
+
+# ---- Do NOT ignore initialization SQL / config ----
+# (Listed explicitly so future patterns don't hide them)
+!init/*.sql
+!data/*.sql
+!bench/*.sql
+!config/**/*.xml
+
+# ---- MacOS metadata in any folder ----
+**/.DS_Store
+
+# ---- End ----

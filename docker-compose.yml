@@ -5,8 +5,8 @@ services:
     image: clickhouse/clickhouse-server:${CH_TAG:-24.8.12.28-lts}
     container_name: ch-local
     ports:
-      - "8123:8123"   # HTTP
-      - "9000:9000"   # Native TCP
+      - "8123:8123"
+      - "9000:9000"
     ulimits:
       nofile:
         soft: 262144
@@ -27,45 +27,61 @@ services:
       timeout: 3s
       retries: 30
 
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command: ['--config.file=/etc/prometheus/prometheus.yml']
+    ports:
+      - "9090:9090"
+    depends_on: [clickhouse]
 
-# --- Monitoring stack ---
-prometheus:
-  image: prom/prometheus:latest
-  container_name: prometheus
-  volumes:
-    - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-  command:
-    - '--config.file=/etc/prometheus/prometheus.yml'
-  ports:
-    - "9090:9090"
-  depends_on:
-    - clickhouse
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on: [prometheus]
 
-grafana:
-  image: grafana/grafana:latest
-  container_name: grafana
-  environment:
-    - GF_SECURITY_ADMIN_USER=admin
-    - GF_SECURITY_ADMIN_PASSWORD=admin
-    - GF_USERS_ALLOW_SIGN_UP=false
-  ports:
-    - "3000:3000"
-  volumes:
-    - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-    - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-    - ./grafana/dashboards:/etc/grafana/dashboards:ro
-  depends_on:
-    - prometheus
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    pid: "host"
+    network_mode: "service:clickhouse"
+    command: ['--path.rootfs=/host']
+    volumes:
+      - '/:/host:ro,rslave'
+    depends_on: [clickhouse]
 
-node-exporter:
-  image: prom/node-exporter:latest
-  container_name: node-exporter
-  pid: "host"
-  network_mode: "service:clickhouse"
-  # share network with clickhouse so target appears as 'clickhouse:9100'
-  command:
-    - '--path.rootfs=/host'
-  volumes:
-    - '/:/host:ro,rslave'
-  depends_on:
-    - clickhouse
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --reserve-memory 0M
+      - --set redpanda.auto_create_topics_enabled=true
+      - --kafka-addr 0.0.0.0:9092
+      - --advertise-kafka-addr redpanda:9092
+    ports: ["9092:9092"]
+
+  producer:
+    build: ./producer
+    container_name: ch-producer
+    environment:
+      - BROKER=redpanda:9092
+      - TOPIC=logs
+      - RPS=500
+      - BURST=1000
+    depends_on: [redpanda]

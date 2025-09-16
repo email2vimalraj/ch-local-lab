@@ -48,17 +48,7 @@ SETTINGS
 
 CREATE OR REPLACE VIEW default.log_app_distributed AS SELECT * FROM default.log_app;
 
--- Kafka Consumer table to consume data from Non-Container kafka topic
-
-
--- Materialized view to parse through the data from the non-container kafka table and insert into `log_app` table
-
-
--- Kafka Consumer table to consume data from Container kafka topic
-
-
--- Materialized view to parse through the data from the container kafka table and insert into `log_app` table
- -- Skip the k8 events
+-- Skip the k8 events
 
 -- Table to capture ingestion stats
 CREATE TABLE IF NOT EXISTS default.log_app_ingestion_stats

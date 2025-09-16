@@ -3,8 +3,6 @@
     "list": []
   },
   "editable": true,
-  "gnetId": null,
-  "graphTooltip": 0,
   "panels": [
     {
       "type": "stat",
@@ -56,7 +54,7 @@
     },
     {
       "type": "timeseries",
-      "title": "ClickHouse exported metrics (example)",
+      "title": "ClickHouse metrics (rate of ClickHouse*)",
       "targets": [
         {
           "expr": "sum by (__name__) (rate({__name__=~\"ClickHouse.*\"}[1m]))",
@@ -72,20 +70,6 @@
     }
   ],
   "schemaVersion": 39,
-  "style": "dark",
-  "tags": [
-    "clickhouse",
-    "prometheus",
-    "lab"
-  ],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-15m",
-    "to": "now"
-  },
-  "timezone": "",
   "title": "CH Local Lab Overview",
   "version": 1
 }

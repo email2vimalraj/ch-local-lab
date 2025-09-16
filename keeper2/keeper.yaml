@@ -1,0 +1,17 @@
+
+node_id: 2
+tcp_port: 9181
+server_id: 2
+cluster_name: chlab
+listen_host: 0.0.0.0
+raft_configuration:
+  server:
+    - id: 1
+      hostname: keeper1
+      port: 9181
+    - id: 2
+      hostname: keeper2
+      port: 9181
+    - id: 3
+      hostname: keeper3
+      port: 9181

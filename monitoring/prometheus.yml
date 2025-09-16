@@ -6,8 +6,8 @@ global:
 scrape_configs:
   - job_name: 'clickhouse'
     static_configs:
-      - targets: ['clickhouse:9363']
+      - targets: ['ch1:9363','ch2:9363','ch3:9363','ch4:9363']
 
   - job_name: 'node'
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['ch1:9100','ch2:9100','ch3:9100','ch4:9100']

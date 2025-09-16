@@ -1,0 +1,17 @@
+
+<clickhouse>
+  <users>
+    <default>
+      <password></password>
+      <networks><ip>::/0</ip></networks>
+      <profile>default</profile>
+      <quota>default</quota>
+    </default>
+    <np_user>
+      <password>np_user_password</password>
+      <networks><ip>::/0</ip></networks>
+      <profile>default</profile>
+      <quota>default</quota>
+    </np_user>
+  </users>
+</clickhouse>

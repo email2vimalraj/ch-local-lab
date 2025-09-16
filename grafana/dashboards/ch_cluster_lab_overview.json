@@ -6,10 +6,10 @@
   "panels": [
     {
       "type": "stat",
-      "title": "ClickHouse target UP",
+      "title": "CH targets UP",
       "targets": [
         {
-          "expr": "up{job=\"clickhouse\"}",
+          "expr": "sum(up{job=\"clickhouse\"})",
           "refId": "A"
         }
       ],
@@ -21,24 +21,8 @@
       }
     },
     {
-      "type": "stat",
-      "title": "Node target UP",
-      "targets": [
-        {
-          "expr": "up{job=\"node\"}",
-          "refId": "A"
-        }
-      ],
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 0
-      }
-    },
-    {
       "type": "timeseries",
-      "title": "Node CPU (user+system)",
+      "title": "Node CPU (user+system by node)",
       "targets": [
         {
           "expr": "sum by (instance) (rate(node_cpu_seconds_total{mode=~\"user|system\"}[1m]))",
@@ -54,7 +38,7 @@
     },
     {
       "type": "timeseries",
-      "title": "ClickHouse metrics (rate of ClickHouse*)",
+      "title": "ClickHouse metrics (rate ClickHouse*)",
       "targets": [
         {
           "expr": "sum by (__name__) (rate({__name__=~\"ClickHouse.*\"}[1m]))",
@@ -62,7 +46,7 @@
         }
       ],
       "gridPos": {
-        "h": 10,
+        "h": 12,
         "w": 12,
         "x": 0,
         "y": 12
@@ -70,6 +54,6 @@
     }
   ],
   "schemaVersion": 39,
-  "title": "CH Local Lab Overview",
+  "title": "CH Cluster Lab Overview",
   "version": 1
 }

@@ -1,31 +1,78 @@
 
 version: "3.8"
 services:
-  clickhouse:
-    image: clickhouse/clickhouse-server:${CH_TAG:-24.8.12.28-lts}
-    container_name: ch-local
-    ports:
-      - "8123:8123"
-      - "9000:9000"
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
+  keeper1:
+    image: clickhouse/clickhouse-keeper:24.8.12.28
+    container_name: keeper1
+    command: ["--config-file=/etc/clickhouse-keeper/keeper.yaml"]
     volumes:
-      - ./data_dir:/var/lib/clickhouse
-      - ./logs:/var/log/clickhouse-server
-      - ./config/config.d:/etc/clickhouse-server/config.d:ro
-      - ./init:/docker-entrypoint-initdb.d:ro
-      - ./cold:/opt/clickhouse_cold
-    environment:
-      - CLICKHOUSE_DB=default
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=
+      - ./keeper1/keeper.yaml:/etc/clickhouse-keeper/keeper.yaml:ro
+    ports: ["9181:9181"]
+
+  keeper2:
+    image: clickhouse/clickhouse-keeper:24.8.12.28
+    container_name: keeper2
+    command: ["--config-file=/etc/clickhouse-keeper/keeper.yaml"]
+    volumes:
+      - ./keeper2/keeper.yaml:/etc/clickhouse-keeper/keeper.yaml:ro
+    ports: ["9182:9181"]
+
+  keeper3:
+    image: clickhouse/clickhouse-keeper:24.8.12.28
+    container_name: keeper3
+    command: ["--config-file=/etc/clickhouse-keeper/keeper.yaml"]
+    volumes:
+      - ./keeper3/keeper.yaml:/etc/clickhouse-keeper/keeper.yaml:ro
+    ports: ["9183:9181"]
+
+  ch1:
+    image: clickhouse/clickhouse-server:${CH_TAG:-24.8.12.28-lts}
+    container_name: ch1
+    depends_on: [keeper1, keeper2, keeper3]
+    ports: ["8123:8123","9000:9000","9363:9363"]
+    volumes:
+      - ./ch1/config/config.d:/etc/clickhouse-server/config.d:ro
+      - ./ch1/config/users.d:/etc/clickhouse-server/users.d:ro
+      - ./ch1/init:/docker-entrypoint-initdb.d:ro
+      - ch1_data:/var/lib/clickhouse
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
+
+  ch2:
+    image: clickhouse/clickhouse-server:${CH_TAG:-24.8.12.28-lts}
+    container_name: ch2
+    depends_on: [keeper1, keeper2, keeper3]
+    ports: ["8124:8123","9001:9000","9364:9363"]
+    volumes:
+      - ./ch2/config/config.d:/etc/clickhouse-server/config.d:ro
+      - ./ch2/config/users.d:/etc/clickhouse-server/users.d:ro
+      - ./ch2/init:/docker-entrypoint-initdb.d:ro
+      - ch2_data:/var/lib/clickhouse
+
+  ch3:
+    image: clickhouse/clickhouse-server:${CH_TAG:-24.8.12.28-lts}
+    container_name: ch3
+    depends_on: [keeper1, keeper2, keeper3]
+    ports: ["8125:8123","9002:9000","9365:9363"]
+    volumes:
+      - ./ch3/config/config.d:/etc/clickhouse-server/config.d:ro
+      - ./ch3/config/users.d:/etc/clickhouse-server/users.d:ro
+      - ./ch3/init:/docker-entrypoint-initdb.d:ro
+      - ch3_data:/var/lib/clickhouse
+
+  ch4:
+    image: clickhouse/clickhouse-server:${CH_TAG:-24.8.12.28-lts}
+    container_name: ch4
+    depends_on: [keeper1, keeper2, keeper3]
+    ports: ["8126:8123","9003:9000","9366:9363"]
+    volumes:
+      - ./ch4/config/config.d:/etc/clickhouse-server/config.d:ro
+      - ./ch4/config/users.d:/etc/clickhouse-server/users.d:ro
+      - ./ch4/init:/docker-entrypoint-initdb.d:ro
+      - ch4_data:/var/lib/clickhouse
 
   # Monitoring
   prometheus:
@@ -34,9 +81,8 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command: ['--config.file=/etc/prometheus/prometheus.yml']
-    ports:
-      - "9090:9090"
-    depends_on: [clickhouse]
+    ports: ["9090:9090"]
+    depends_on: [ch1, ch2, ch3, ch4]
 
   grafana:
     image: grafana/grafana:latest
@@ -45,24 +91,14 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
-    ports:
-      - "3000:3000"
+    ports: ["3000:3000"]
     volumes:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./grafana/dashboards:/etc/grafana/dashboards:ro
     depends_on: [prometheus]
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    pid: "host"
-    network_mode: "service:clickhouse"
-    command: ['--path.rootfs=/host']
-    volumes:
-      - '/:/host:ro,rslave'
-    depends_on: [clickhouse]
-
+  # Kafka broker (Redpanda) + producer
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: redpanda
@@ -82,6 +118,48 @@ services:
     environment:
       - BROKER=redpanda:9092
       - TOPIC=logs
-      - RPS=500
-      - BURST=1000
+      - RPS=2000
     depends_on: [redpanda]
+
+  # Node exporters per CH node (share network namespace to expose as chX:9100)
+  nodeexporter1:
+    image: prom/node-exporter:latest
+    container_name: nodeexporter1
+    network_mode: "service:ch1"
+    pid: "host"
+    command: ['--path.rootfs=/host']
+    volumes: ['/:/host:ro,rslave']
+    depends_on: [ch1]
+
+  nodeexporter2:
+    image: prom/node-exporter:latest
+    container_name: nodeexporter2
+    network_mode: "service:ch2"
+    pid: "host"
+    command: ['--path.rootfs=/host']
+    volumes: ['/:/host:ro,rslave']
+    depends_on: [ch2]
+
+  nodeexporter3:
+    image: prom/node-exporter:latest
+    container_name: nodeexporter3
+    network_mode: "service:ch3"
+    pid: "host"
+    command: ['--path.rootfs=/host']
+    volumes: ['/:/host:ro,rslave']
+    depends_on: [ch3]
+
+  nodeexporter4:
+    image: prom/node-exporter:latest
+    container_name: nodeexporter4
+    network_mode: "service:ch4"
+    pid: "host"
+    command: ['--path.rootfs=/host']
+    volumes: ['/:/host:ro,rslave']
+    depends_on: [ch4]
+
+volumes:
+  ch1_data: {}
+  ch2_data: {}
+  ch3_data: {}
+  ch4_data: {}

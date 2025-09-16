@@ -1,0 +1,14 @@
+
+<clickhouse>
+  <macros>
+    <cluster>ch_np_cluster</cluster>
+    <shard>1</shard>
+    <replica>replica1</replica>
+    <host>ch1</host>
+  </macros>
+  <zookeeper>
+    <node><host>keeper1</host><port>9181</port></node>
+    <node><host>keeper2</host><port>9181</port></node>
+    <node><host>keeper3</host><port>9181</port></node>
+  </zookeeper>
+</clickhouse>

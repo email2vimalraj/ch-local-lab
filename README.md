@@ -1,38 +1,51 @@
 
-# ClickHouse Local Lab (Single Node, Ingestion + Monitoring)
+# ClickHouse Cluster Lab — 2 Shards × 2 Replicas
+
+## Topology
+- Keeper quorum: 3 nodes (keeper1..3) on 9181
+- ClickHouse: 4 nodes ch1..ch4 (2 shards × 2 replicas)
+  - Shard 1: ch1 (replica1), ch2 (replica2)
+  - Shard 2: ch3 (replica1), ch4 (replica2)
+- Monitoring: Prometheus (9090) + Grafana (3000, admin/admin)
+- Kafka: Redpanda (9092) + Python producer (RPS env)
 
 ## Start
 ```bash
 docker compose up -d
+# wait till all four CH nodes are healthy
 ```
 
-## Create Kafka ingestion pipeline
+## Initialize schema (run ONCE against ch1; ON CLUSTER propagates)
 ```bash
-docker exec -it ch-local clickhouse-client --multiquery --query "$(cat init/05_kafka_local.sql)"
+docker exec -it ch1 clickhouse-client --multiquery --query "$(cat /docker-entrypoint-initdb.d/01_init.sql)"
+docker exec -it ch1 clickhouse-client --multiquery --query "$(cat /docker-entrypoint-initdb.d/02_schema.sql)"
+docker exec -it ch1 clickhouse-client --multiquery --query "$(cat /docker-entrypoint-initdb.d/03_udf.sql)"
 ```
 
-## Verify ingestion
+> If your SQL already includes ON CLUSTER, the above will apply to all 4 nodes.
+
+## Ingestion via Kafka
+Create local lab Kafka ingestion (simple JSONEachRow → buffer → log_app). Run on ch1:
 ```bash
-docker logs -f ch-producer
-docker exec -it ch-local clickhouse-client --query "
-  SELECT toStartOfMinute(event_timestamp) ts, count() c
-  FROM default.log_app
-  WHERE event_timestamp > now() - INTERVAL 10 MINUTE
-  GROUP BY ts ORDER BY ts DESC LIMIT 20;"
+docker exec -it ch1 clickhouse-client --multiquery --query "
+CREATE DATABASE IF NOT EXISTS default;
+$(cat /docker-entrypoint-initdb.d/05_kafka_local.sql)
+"
 ```
 
-## Run benchmarks during ingestion
-```bash
-docker exec -it ch-local clickhouse-client --multiquery --query "$(cat bench/queries.sql)"
-docker exec -it ch-local clickhouse-client --query "$(cat bench/report.sql)"
-```
+Producer is already sending ~2000 msg/s. Tune rate:
+- Edit `docker-compose.yml` -> `producer` env `RPS=<value>`
+- `docker compose up -d --force-recreate --no-deps producer`
 
-## Upgrade test
+## Validate
+- `http://localhost:3000` Grafana (admin/admin)
+- Prometheus targets should show ch1..ch4 & node exporters
+- Run queries from ch1:
 ```bash
-CH_TAG=<new-lts-tag> docker compose up -d --force-recreate
+clickhouse-client -h localhost --port 9000 --query "SELECT count() FROM default.log_app"
 ```
 
 ## Notes
-- Your storage policy from `storage_configuration.xml` is mounted.
-- Schema was transformed for single-node; Kafka/MVs from your cluster schema are not used here.
-- A generated view `default.log_app_distributed` points to `default.log_app`.
+- Cluster name: `ch_np_cluster` (matches remote_servers & macros)
+- Replication uses Keeper at keeper1..3
+- Prometheus endpoint on each node: `:9363/metrics`
